@@ -14,20 +14,12 @@ class ImageHandler:
         self.map_img = None
         self.battlebots.impossible_positions = None
 
-    def get_impossible_positions(self):
-        mapfile = 'images/maps/' + self.battlebots.map + '.png'
-        image = cv2.imread(mapfile)
-        coords = np.argwhere((image==[255,255,255]).all(axis=2))
-        return coords
-
     def update_map_image(self):
         self.current_map = self.battlebots.map
         self.battlebots.mapfile = 'images/maps/' + self.battlebots.map + '.png'
         self.map_img = cv2.imread(self.battlebots.mapfile)
 
     def run(self):
-        self.battlebots.impossible_positions = self.get_impossible_positions()
-        print(str(self.get_impossible_positions()))
         while not self.battlebots.stopthreads:
             if not self.battlebots.map:
                 self.battlebots.mapfile = 'images/noconnection.png'
@@ -66,8 +58,6 @@ class ImageHandler:
     def place_markers(self, img):
         """Place markers on the Map
         """
-        # Add markers
-
         for o in self.battlebots.clients:
             # Tank Marker
 

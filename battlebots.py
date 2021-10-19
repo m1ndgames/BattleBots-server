@@ -1,5 +1,6 @@
 import configparser
 import ctypes
+import time
 from threading import Thread
 import PySimpleGUI as Gui
 from imagehandler import ImageHandler
@@ -18,10 +19,10 @@ class BattleBots:
         self.stopthreads = False
         self.game = None
         self.mapfile = None
+        self.map = None
 
     def setup(self):
         ctypes.windll.user32.SetProcessDPIAware()
-
         self.config.read('config.ini')
         self.map = self.config['game']['map']
 
@@ -30,10 +31,11 @@ class BattleBots:
         server_thread.setDaemon(True)
         server_thread.start()
 
-        # Start mapgen_thread
-        mapgen_thread = Thread(target=self.imagehandler.run)
-        mapgen_thread.setDaemon(True)
-        mapgen_thread.start()
+        if self.config['server']['gui'] == 'yes':
+            # Start mapgen_thread
+            mapgen_thread = Thread(target=self.imagehandler.run)
+            mapgen_thread.setDaemon(True)
+            mapgen_thread.start()
 
         # Start server_processor thread
         processor_thread = Thread(target=self.server.server_processor)
@@ -47,25 +49,30 @@ class BattleBots:
         if not self.setup_done:
             self.setup()
 
-        # Set theme
-        Gui.theme('DarkAmber')
+        if self.config['server']['gui'] == 'yes':
+            # Set theme
+            Gui.theme('DarkAmber')
 
-        # Create the layout
-        layout = [
-            [Gui.Image(data=self.imagedata, key='map')]
-        ]
+            # Create the layout
+            layout = [
+                [Gui.Image(data=self.imagedata, key='map')]
+            ]
 
-        # Create the window
-        window = Gui.Window(title='BattleBotsServer ' + self.version, no_titlebar=False, layout=layout, finalize=True, keep_on_top=True, grab_anywhere=True, return_keyboard_events=True)
+            # Create the window
+            window = Gui.Window(title='BattleBotsServer ' + self.version, no_titlebar=False, layout=layout, finalize=True, keep_on_top=False, grab_anywhere=True, return_keyboard_events=True)
 
-        # Run GUI
-        while True:
-            event, values = window.read(timeout=100)
-            if event == Gui.WIN_CLOSED:
-                break
+            # Run GUI
+            while True:
+                event, values = window.read(timeout=100)
+                if event == Gui.WIN_CLOSED:
+                    break
 
-            window.Element('map').Update(data=self.imagedata)
-            window.refresh()
+                window.Element('map').Update(data=self.imagedata)
+                window.refresh()
 
-        self.stopthreads = True
-        window.close()
+            self.stopthreads = True
+            window.close()
+
+        else:
+            while True:
+                time.sleep(1)

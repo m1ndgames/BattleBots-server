@@ -74,6 +74,7 @@ while True:
             pos_y = server_message['pos_y']
             speed = server_message['speed']
             power = server_message['power']
+            health = server_message['health']
             pos_angle = server_message['pos_angle']
             radar_angle = server_message['radar_angle']
             data = {

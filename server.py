@@ -1,10 +1,11 @@
 import random
 import socket
 import json
-import os
 import threading
 from _thread import *
 import time
+import cv2
+import numpy as np
 
 
 class BattleBotsServer:
@@ -39,6 +40,12 @@ class BattleBotsServer:
         decoded_data = data.decode('utf-8')
         data_objects = json.loads(decoded_data)
         return data_objects
+
+    def get_impossible_positions(self):
+        mapfile = 'images/maps/' + self.battlebots.map + '.png'
+        image = cv2.imread(mapfile)
+        coords = np.argwhere((image==[255,255,255]).all(axis=2))
+        return coords
 
     def get_distance(self, x1, y1, x2, y2):
         result = ((((x2 - x1) ** 2) + ((y2 - y1) ** 2)) ** 0.5)
@@ -110,28 +117,31 @@ class BattleBotsServer:
     def check_valid_input(self, message):
         for client in self.battlebots.clients:
             if message['secret'] == client['secret']:
+                if message['secret'] not in self.round_actions:
+                    self.round_actions.append(message['secret'])
+
                 if message['type'] == 'game' and message['action'] == 'accelerate':
                     client['speed'] += 1
-                    return
+                    return True
                 elif message['type'] == 'game' and message['action'] == 'brake':
                     client['speed'] -= 1
-                    return
+                    return True
                 elif message['type'] == 'game' and message['action'] == 'turn-left':
                     new_angle = self.turn(client, 'tank', 'left')
                     client['pos_angle'] = new_angle
-                    return
+                    return True
                 elif message['type'] == 'game' and message['action'] == 'turn-right':
                     new_angle = self.turn(client, 'tank', 'right')
                     client['pos_angle'] = new_angle
-                    return
+                    return True
                 elif message['type'] == 'game' and message['action'] == 'radar-left':
                     new_angle = self.turn(client, 'radar', 'left')
                     client['radar_angle'] = new_angle
-                    return
+                    return True
                 elif message['type'] == 'game' and message['action'] == 'radar-right':
                     new_angle = self.turn(client, 'radar', 'right')
                     client['radar_angle'] = new_angle
-                    return
+                    return True
                 else:
                     return False
 
@@ -178,6 +188,7 @@ class BattleBotsServer:
                                 'radar_angle': random_startangle,
                                 'speed': 0,
                                 'power': 100,
+                                'health': 100,
                                 'ready': False
                             }
                         )
@@ -203,6 +214,7 @@ class BattleBotsServer:
                                     'radar_angle': client['radar_angle'],
                                     'speed': client['speed'],
                                     'power': client['power'],
+                                    'health': client['health'],
                                     'round': self.battlebots.game_tick
                                 }
                                 client['client'].send(self.encode_data(data))
@@ -211,23 +223,28 @@ class BattleBotsServer:
                         for client in self.battlebots.clients:
                             if client['client'] == connection:
                                 if self.check_valid_input(client_message):
-                                    print("Input is valid")
-
-                                self.battlebots.received_update = True
-                                data = {
-                                    'type': 'game',
-                                    'pos_x': client['pos_x'],
-                                    'pos_y': client['pos_y'],
-                                    'pos_angle': client['pos_angle'],
-                                    'radar_angle': client['radar_angle'],
-                                    'speed': client['speed'],
-                                    'power': client['power'],
-                                    'round': self.battlebots.game_tick
-                                }
-                                client['client'].send(self.encode_data(data))
+                                    data = {
+                                        'type': 'game',
+                                        'pos_x': client['pos_x'],
+                                        'pos_y': client['pos_y'],
+                                        'pos_angle': client['pos_angle'],
+                                        'radar_angle': client['radar_angle'],
+                                        'speed': client['speed'],
+                                        'power': client['power'],
+                                        'health': client['health'],
+                                        'round': self.battlebots.game_tick
+                                    }
+                                    client['client'].send(self.encode_data(data))
 
     def server_processor(self):
         while not self.battlebots.stopthreads:
+            # Check if all players provided an input this round
+            if len(self.battlebots.clients) == len(self.round_actions):
+                self.battlebots.received_update = True
+                if self.game_start:
+                    self.battlebots.game_tick += 1
+                self.round_actions = []
+
             if self.battlebots.clients:
                 # Send 'start' event type to all clients when we are ready to start
                 if self.countdown_timer:
@@ -265,6 +282,9 @@ class BattleBotsServer:
                     self.timer_thread.start()
 
     def run(self):
+        # Create list of wall coordinates
+        self.battlebots.impossible_positions = self.get_impossible_positions()
+
         ServerSideSocket = socket.socket()
 
         try:
