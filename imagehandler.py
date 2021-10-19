@@ -77,7 +77,7 @@ class ImageHandler:
             colored_marker = Image.fromarray(data)
 
             # Rotate the marker according to object rotation
-            rotated_player_marker = ndimage.rotate(colored_marker, o['pos_angle'])
+            rotated_player_marker = ndimage.rotate(input=colored_marker, angle=o['pos_angle'], reshape=False, order=5)
 
             img = self.merge_image(img, rotated_player_marker, o['pos_x'], o['pos_y'])
 
@@ -88,7 +88,7 @@ class ImageHandler:
             radar_marker_plain = Image.open(radar_image)
 
             # Rotate the radar marker according to object rotation
-            rotated_radar_marker = ndimage.rotate(radar_marker_plain, o['radar_angle'])
+            rotated_radar_marker = ndimage.rotate(input=radar_marker_plain, angle=o['radar_angle'], reshape=False, order=5)
 
             img = self.merge_image(img, rotated_radar_marker, o['pos_x'], o['pos_y'])
 
