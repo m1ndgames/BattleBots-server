@@ -163,6 +163,19 @@ class BattleBotsServer:
                 connection.close()
                 return
 
+            # Send 'full' event type when game is already in progress
+            connected_clients = []
+            for client in self.battlebots.clients:
+                connected_clients.append(client['client'])
+
+            if connection not in connected_clients and self.game_start:
+                data = {
+                    'type': 'full'
+                }
+                connection.send(self.encode_data(data))
+                connection.close()
+                return
+
             data = connection.recv(2048)
             if not data:
                 break
@@ -192,6 +205,8 @@ class BattleBotsServer:
                                 'ready': False
                             }
                         )
+
+                        self.battlebots.received_update = True
 
                         data = {
                             'type': 'ack',
@@ -284,6 +299,7 @@ class BattleBotsServer:
     def run(self):
         # Create list of wall coordinates
         self.battlebots.impossible_positions = self.get_impossible_positions()
+        self.battlebots.received_update = True
 
         ServerSideSocket = socket.socket()
 
